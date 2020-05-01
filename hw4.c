@@ -16,10 +16,10 @@ int main(int argc, char** argv)
     int socket_descriptor = socket(PF_INET, SOCK_STREAM, 0);
     if (socket_descriptor == -1)
     {
-        perror("MAIN: socket() call failed.\n");
+        perror("MAIN: ERROR socket() call failed.\n");
         return EXIT_FAILURE;
     }
-    
+
     //Terminate.
     return 0;
 }
