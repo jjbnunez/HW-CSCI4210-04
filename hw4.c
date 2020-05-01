@@ -3,13 +3,21 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
+
+#define MAX_CLIENTS 32
 
 int main(int argc, char** argv)
 {
     //Ensure no buffered output for stdout and stderr.
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+
+    //Set up variables for select.
+    fd_set read_fds;
+    int client_sockets[MAX_CLIENTS]; /* client socket fd list */
+    int client_socket_index = 0;
     
     //Initialize the TCP socket object, and error-check the descriptor result.
     int tcp_descriptor = socket(PF_INET, SOCK_STREAM, 0);
