@@ -94,8 +94,8 @@ int main(int argc, char** argv)
     //same time, since they both listen on the
     //same port. The select() function will
     //handle this for us instead.
-    int tcp_listener = listen(tcp_fd, MAX_CLIENTS - 1);
-    if (tcp_listener == -1)
+    int listener = listen(tcp_fd, MAX_CLIENTS - 1);
+    if (listener == -1)
     {
         perror("MAIN: ERROR listen() call failed for TCP\n");
         exit(EXIT_FAILURE);
