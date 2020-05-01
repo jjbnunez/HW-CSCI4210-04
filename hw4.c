@@ -5,8 +5,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define PORT 9876
-
 int main(int argc, char** argv)
 {
     //Ensure no buffered output for stdout and stderr.
@@ -39,8 +37,14 @@ int main(int argc, char** argv)
     udp_server.sin_family = AF_INET;
     udp_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    //Specify the target port.
+    //Specify the target port and lengths.
     unsigned short port = 9876;
+    tcp_server.sin_port = htons(port);
+    udp_server.sin_port = htons(port);
+    int tcp_len = sizeof(tcp_server);
+    int udp_len = sizeof(udp_server);
+
+    
 
     //Terminate.
     return 0;
