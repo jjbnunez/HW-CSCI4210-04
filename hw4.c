@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <pthread.h>
 
+#define PORT 9876
+
 int main(int argc, char** argv)
 {
     //Ensure no buffered output for stdout and stderr.
