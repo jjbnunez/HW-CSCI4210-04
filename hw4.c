@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 
     //Set up variables for select.
     fd_set read_fds;
-    int client_sockets[MAX_CLIENTS]; /* client socket fd list */
+    int client_sockets[MAX_CLIENTS];
     int client_socket_index = 0;
     
     //Initialize the TCP socket object, and error-check the descriptor result.
