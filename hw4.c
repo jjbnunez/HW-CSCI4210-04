@@ -31,8 +31,8 @@ int main(int argc, char** argv)
     //Initialize the TCP socket object, and
     //validate the socket descriptor. For
     //context, "fd" stands for "file descriptor". 
-    int tcp_descriptor = socket(AF_INET, SOCK_STREAM, 0);
-    if (tcp_descriptor == -1)
+    int tcp_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (tcp_fd == -1)
     {
         perror("MAIN: ERROR socket() call failed for TCP\n");
         exit(EXIT_FAILURE);
@@ -40,8 +40,8 @@ int main(int argc, char** argv)
 
     //Initialize the UDP socket object, and
     //validate the descriptor result.
-    int udp_descriptor = socket(AF_INET, SOCK_DGRAM, 0);
-    if (udp_descriptor == -1)
+    int udp_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (udp_fd == -1)
     {
         perror("MAIN: ERROR socket() call failed for UDP\n");
         exit(EXIT_FAILURE);
@@ -69,19 +69,19 @@ int main(int argc, char** argv)
     int udp_length = sizeof(udp_server);
 
     //Bind TCP and UDP ports.
-    if (bind(tcp_descriptor, (struct sockaddr *)&tcp_server, tcp_length ) < 0)
+    if (bind(tcp_fd, (struct sockaddr *)&tcp_server, tcp_length ) < 0)
     {
         perror("MAIN: ERROR bind() call failed for TCP\n");
         exit(EXIT_FAILURE);
     }
-    if (bind(udp_descriptor, (struct sockaddr *)&udp_server, udp_length ) < 0)
+    if (bind(udp_fd, (struct sockaddr *)&udp_server, udp_length ) < 0)
     {
         perror("MAIN: ERROR bind() call failed for UDP\n");
         exit(EXIT_FAILURE);
     }
 
     //Set up TCP listener.
-    int tcp_listener = listen(tcp_descriptor, MAX_CLIENTS - 1);
+    int tcp_listener = listen(tcp_fd, MAX_CLIENTS - 1);
     if (tcp_listener == -1)
     {
         perror("MAIN: ERROR listen() call failed for TCP\n");
