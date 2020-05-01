@@ -16,7 +16,7 @@ int main(int argc, char** argv)
     if (tcp_descriptor == -1)
     {
         perror("MAIN: ERROR socket() call failed for TCP.\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     //Initialize the UDP socket object, and error-check the descriptor result.
@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     if (udp_descriptor == -1)
     {
         perror("MAIN: ERROR socket() call failed for UDP.\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     //Initialize a server struct for the TCP connections.
@@ -41,10 +41,20 @@ int main(int argc, char** argv)
     unsigned short port = 9876;
     tcp_server.sin_port = htons(port);
     udp_server.sin_port = htons(port);
-    int tcp_len = sizeof(tcp_server);
-    int udp_len = sizeof(udp_server);
+    int tcp_length = sizeof(tcp_server);
+    int udp_length = sizeof(udp_server);
 
-    
+    //Bind TCP and UDP ports.
+    if (bind(tcp_descriptor, (struct sockaddr *)&tcp_server, tcp_length ) < 0)
+    {
+        perror("MAIN: ERROR bind() call failed for TCP.\n");
+        exit(EXIT_FAILURE);
+    }
+    if (bind(udp_descriptor, (struct sockaddr *)&udp_server, udp_length ) < 0)
+    {
+        perror("MAIN: ERROR bind() call failed for UDP.\n");
+        exit(EXIT_FAILURE);
+    }
 
     //Terminate.
     return 0;
