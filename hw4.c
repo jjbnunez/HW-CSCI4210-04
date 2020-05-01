@@ -64,6 +64,10 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
+    // Set up listener.
+    listen(tcp_descriptor, MAX_CLIENTS - 1);
+    listen(udp_descriptor, MAX_CLIENTS - 1);
+
     //Terminate.
     return 0;
 }
