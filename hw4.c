@@ -67,10 +67,14 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    // Set up listeners.
-    listen(tcp_descriptor, MAX_CLIENTS - 1);
+    //Set up TCP listener.
+    int tcp_listener = listen(tcp_descriptor, MAX_CLIENTS - 1);
+    if (tcp_listener == -1)
+    {
+        perror("MAIN: ERROR listen() call failed for TCP.\n");
+        exit(EXIT_FAILURE);
+    }
     printf("MAIN: Listening for TCP connections on port: %d\n", PORT);
-    listen(udp_descriptor, MAX_CLIENTS - 1);
     printf("MAIN: Listening for UDP datagrams on port: %d\n", PORT);
 
     //Terminate.
