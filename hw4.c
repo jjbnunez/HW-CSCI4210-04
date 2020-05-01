@@ -12,6 +12,17 @@
 #define PORT 9876
 #define MAX_CLIENTS 32
 
+//Helper function to get the maximum
+//between two integers.
+int max(int x, int y)
+{
+    if (x > y)
+    {
+        return x;
+    }
+    return y;
+}
+
 int main(int argc, char** argv)
 {
     //Ensure no buffered output for stdout and
