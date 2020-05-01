@@ -6,6 +6,7 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
+#define PORT 9876
 #define MAX_CLIENTS 32
 
 int main(int argc, char** argv)
@@ -49,9 +50,8 @@ int main(int argc, char** argv)
     udp_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
     //Specify the target port and lengths.
-    unsigned short port = 9876;
-    tcp_server.sin_port = htons(port);
-    udp_server.sin_port = htons(port);
+    tcp_server.sin_port = htons(PORT);
+    udp_server.sin_port = htons(PORT);
     int tcp_length = sizeof(tcp_server);
     int udp_length = sizeof(udp_server);
 
@@ -69,9 +69,9 @@ int main(int argc, char** argv)
 
     // Set up listeners.
     listen(tcp_descriptor, MAX_CLIENTS - 1);
-    printf("MAIN: Listening for TCP connections on port: %d\n", port);
+    printf("MAIN: Listening for TCP connections on port: %d\n", PORT);
     listen(udp_descriptor, MAX_CLIENTS - 1);
-    printf("MAIN: Listening for UDP datagrams on port: %d\n", port);
+    printf("MAIN: Listening for UDP datagrams on port: %d\n", PORT);
 
     //Terminate.
     return 0;
