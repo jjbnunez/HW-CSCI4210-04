@@ -14,6 +14,9 @@ int main(int argc, char** argv)
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
+    //Announce that the main process is running.
+    printf("MAIN: Started server\n");
+
     //Set up variables for select.
     fd_set read_fds;
     int client_sockets[MAX_CLIENTS]; /* client socket fd list */
@@ -64,9 +67,11 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    // Set up listener.
+    // Set up listeners.
     listen(tcp_descriptor, MAX_CLIENTS - 1);
+    printf("MAIN: Listening for TCP connections on port: %d\n", port);
     listen(udp_descriptor, MAX_CLIENTS - 1);
+    printf("MAIN: Listening for UDP datagrams on port: %d\n", port);
 
     //Terminate.
     return 0;
