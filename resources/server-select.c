@@ -81,11 +81,10 @@ int main()
               client_sockets[ i ] );
     }
 
-#if 0
+    #if 0
     /* This is a BLOCKING call, but will block on all readfds */
     int ready = select( FD_SETSIZE, &readfds, NULL, NULL, NULL );
-#endif
-#if 1
+    #else
     struct timeval timeout;
     timeout.tv_sec = 2;
     timeout.tv_usec = 500;
@@ -95,8 +94,8 @@ int main()
       printf("Nothing yet!\n");
       continue;
     }
-
-#endif
+    #endif
+    
     if (ready == -1)
     {
       perror("select()");
