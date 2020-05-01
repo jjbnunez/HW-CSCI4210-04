@@ -40,7 +40,7 @@ int main()
 
   struct sockaddr_in server;
   server.sin_family = AF_INET;
-  memcpy( (void *)&server.sin_addr, (void *)hp->h_addr, hp->h_length );
+  memcpy( (void *)&server.sin_addr, (void *)hp->h_addr_list[0], hp->h_length );
   unsigned short port = 8123;
   server.sin_port = htons( port );
 
