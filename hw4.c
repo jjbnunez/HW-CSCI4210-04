@@ -63,8 +63,9 @@ int main(int argc, char** argv)
     udp_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
     //Specify the target port and lengths.
-    tcp_server.sin_port = htons(PORT);
-    udp_server.sin_port = htons(PORT);
+    uint16_t port = PORT; 
+    tcp_server.sin_port = htons(port);
+    udp_server.sin_port = htons(port);
     int tcp_length = sizeof(tcp_server);
     int udp_length = sizeof(udp_server);
 
