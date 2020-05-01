@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     int tcp_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_descriptor == -1)
     {
-        perror("MAIN: ERROR socket() call failed for TCP.\n");
+        perror("MAIN: ERROR socket() call failed for TCP\n");
         exit(EXIT_FAILURE);
     }
 
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
     int udp_descriptor = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_descriptor == -1)
     {
-        perror("MAIN: ERROR socket() call failed for UDP.\n");
+        perror("MAIN: ERROR socket() call failed for UDP\n");
         exit(EXIT_FAILURE);
     }
 
@@ -70,12 +70,12 @@ int main(int argc, char** argv)
     //Bind TCP and UDP ports.
     if (bind(tcp_descriptor, (struct sockaddr *)&tcp_server, tcp_length ) < 0)
     {
-        perror("MAIN: ERROR bind() call failed for TCP.\n");
+        perror("MAIN: ERROR bind() call failed for TCP\n");
         exit(EXIT_FAILURE);
     }
     if (bind(udp_descriptor, (struct sockaddr *)&udp_server, udp_length ) < 0)
     {
-        perror("MAIN: ERROR bind() call failed for UDP.\n");
+        perror("MAIN: ERROR bind() call failed for UDP\n");
         exit(EXIT_FAILURE);
     }
 
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
     int tcp_listener = listen(tcp_descriptor, MAX_CLIENTS - 1);
     if (tcp_listener == -1)
     {
-        perror("MAIN: ERROR listen() call failed for TCP.\n");
+        perror("MAIN: ERROR listen() call failed for TCP\n");
         exit(EXIT_FAILURE);
     }
     printf("MAIN: Listening for TCP connections on port: %d\n", PORT);
