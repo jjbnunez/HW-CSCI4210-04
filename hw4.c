@@ -6,24 +6,30 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
+//This program supports a maximum of 32 clients
+//at once.
 #define PORT 9876
 #define MAX_CLIENTS 32
 
 int main(int argc, char** argv)
 {
-    //Ensure no buffered output for stdout and stderr.
+    //Ensure no buffered output for stdout and
+    //stderr. This is useful for testing on
+    //Submitty.
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
     //Announce that the main process is running.
     printf("MAIN: Started server\n");
 
-    //Set up variables for select.
+    //Set up variables for select() behavior.
     fd_set read_fds;
     int client_sockets[MAX_CLIENTS];
     int client_socket_index = 0;
     
-    //Initialize the TCP socket object, and error-check the descriptor result.
+    //Initialize the TCP socket object, and
+    //validate the socket descriptor. For
+    //context, "fd" stands for "file descriptor". 
     int tcp_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_descriptor == -1)
     {
@@ -31,7 +37,8 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    //Initialize the UDP socket object, and error-check the descriptor result.
+    //Initialize the UDP socket object, and
+    //validate the descriptor result.
     int udp_descriptor = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_descriptor == -1)
     {
@@ -39,12 +46,17 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    //Initialize a server struct for the TCP connections.
+    //Initialize a server struct for the TCP
+    //connections. We define the kind of
+    //traffic it will accept, and we specify
+    //that it can accept traffic from any IP
+    //address.
     struct sockaddr_in tcp_server;
     tcp_server.sin_family = AF_INET;
     tcp_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    //Initialize a server struct for the UDP connections.
+    //Initialize a server struct for the UDP
+    //connections. Ditto as above.
     struct sockaddr_in udp_server;
     udp_server.sin_family = AF_INET;
     udp_server.sin_addr.s_addr = htonl(INADDR_ANY);
