@@ -7,7 +7,8 @@
 #include <arpa/inet.h>
 
 //This program supports a maximum of 32 clients
-//at once.
+//at once. Also, the port is specified here as a
+//macro for convenience.
 #define PORT 9876
 #define MAX_CLIENTS 32
 
@@ -47,8 +48,8 @@ int main(int argc, char** argv)
     }
 
     //Initialize a server struct for the TCP
-    //connections. We define the kind of
-    //traffic it will accept, and we specify
+    //connections. It defines the kind of
+    //traffic it will accept, and it specifies
     //that it can accept traffic from any IP
     //address.
     struct sockaddr_in tcp_server;
