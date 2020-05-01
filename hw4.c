@@ -20,7 +20,7 @@ int main(int argc, char** argv)
     int client_socket_index = 0;
     
     //Initialize the TCP socket object, and error-check the descriptor result.
-    int tcp_descriptor = socket(PF_INET, SOCK_STREAM, 0);
+    int tcp_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_descriptor == -1)
     {
         perror("MAIN: ERROR socket() call failed for TCP.\n");
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 
     //Initialize a server struct for the TCP connections.
     struct sockaddr_in tcp_server;
-    tcp_server.sin_family = PF_INET;
+    tcp_server.sin_family = AF_INET;
     tcp_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
     //Initialize a server struct for the UDP connections.
