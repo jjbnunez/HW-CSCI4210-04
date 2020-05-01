@@ -21,7 +21,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    //Initialize the TCP socket object, and error-check the descriptor result.
+    //Initialize the UDP socket object, and error-check the descriptor result.
     int udp_descriptor = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_descriptor == -1)
     {
