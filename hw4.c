@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     //connections. It defines the kind of
     //traffic it will accept, and it specifies
     //that it can accept traffic from any IP
-    //address.
+    //address. Note that AF_INET refers to IPv4. 
     struct sockaddr_in tcp_server;
     tcp_server.sin_family = AF_INET;
     tcp_server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -63,13 +63,20 @@ int main(int argc, char** argv)
     udp_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
     //Specify the target port and lengths.
+    //htons() and htonl() convert the provided
+    //integer arguments from host byte order to
+    //network byte order.
     uint16_t port = PORT; 
     tcp_server.sin_port = htons(port);
     udp_server.sin_port = htons(port);
     int tcp_length = sizeof(tcp_server);
     int udp_length = sizeof(udp_server);
 
-    //Bind TCP and UDP ports.
+    //Bind the TCP and UDP addresses to their
+    //respective file descriptors. Specifying
+    //the length of the sockaddr_in struct is
+    //necessary to pass into the bind()
+    //function.
     if (bind(tcp_fd, (struct sockaddr *)&tcp_server, tcp_length ) < 0)
     {
         perror("MAIN: ERROR bind() call failed for TCP\n");
@@ -81,7 +88,12 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    //Set up TCP listener.
+    //Set up the passive listener for the TCP
+    //socket in particular. We CANNOT also set
+    //up a listener for the UDP socket at the
+    //same time, since they both listen on the
+    //same port. The select() function will
+    //handle this for us instead.
     int tcp_listener = listen(tcp_fd, MAX_CLIENTS - 1);
     if (tcp_listener == -1)
     {
