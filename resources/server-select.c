@@ -150,6 +150,7 @@ int main()
               {
                 client_sockets[ m ] = client_sockets[ m + 1 ];
               }
+              client_sockets[client_socket_index] = 0;
               client_socket_index--;
               break;  /* all done */
             }
