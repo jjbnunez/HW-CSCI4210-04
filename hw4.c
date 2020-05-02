@@ -16,6 +16,13 @@
 #define BUFFER_SIZE 1024
 #define OK "OK!\n"
 
+//Global space for list of connected clients
+//set in accordance to the login names
+int client_sockets[MAX_CLIENTS];
+char client_names[MAX_CLIENTS][16];
+
+
+
 //Helper function to get the maximum
 //between two integers.
 int max(int x, int y)
@@ -90,12 +97,11 @@ int main(int argc, char** argv)
 
     //Set up variables for select() behavior.
     fd_set read_fds;
-    int client_sockets[MAX_CLIENTS];
     int client_socket_index = 0;
     
     //Initialize the TCP socket object, and
     //validate the socket descriptor. For
-    //context, "fd" stands for "file descriptor". 
+    //context, "fd" stands for "file descriptor".
     int tcp_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_fd == -1)
     {
@@ -116,7 +122,7 @@ int main(int argc, char** argv)
     //connections. It defines the kind of
     //traffic it will accept, and it specifies
     //that it can accept traffic from any IP
-    //address. Note that AF_INET refers to IPv4. 
+    //address. Note that AF_INET refers to IPv4.
     struct sockaddr_in tcp_server;
     tcp_server.sin_family = AF_INET;
     tcp_server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -364,6 +370,7 @@ int main(int argc, char** argv)
                             {
                                 client_sockets[m] = client_sockets[m + 1];
                             }
+                            client_sockets[client_socket_index] = 0;
                             client_socket_index--;
                             break;
                         }
