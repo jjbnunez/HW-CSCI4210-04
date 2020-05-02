@@ -12,6 +12,7 @@
 #define PORT 9876
 #define MAX_CLIENTS 32
 #define BUFFER_SIZE 1024
+#define OK "OK!\n"
 
 //Helper function to get the maximum
 //between two integers.
@@ -84,7 +85,7 @@ int main(int argc, char** argv)
     //for temporarily storing client file
     //descriptor information.
     struct sockaddr_in client;
-    int client_sockaddr_length = sizeof(client);
+    int client_sockaddr_length;
 
     //Specify the target port and lengths.
     //htons() and htonl() convert the provided
@@ -192,7 +193,11 @@ int main(int argc, char** argv)
         //datagram.
         if (FD_ISSET(udp_fd, &read_fds))
         {
-            int received = recvfrom(
+            //The recvfrom() function can handle
+            //single datagrams. The received
+            //message can then be parsed.
+            client_sockaddr_length = sizeof(client); 
+            int received_bytes = recvfrom(
                 udp_fd,
                 buffer,
                 BUFFER_SIZE-1,
@@ -201,27 +206,30 @@ int main(int argc, char** argv)
                 (socklen_t *) &client_sockaddr_length
             );
             
-            if (received < 0)
+            //If the number of received_bytes
+            //reads as less than 0, that
+            //indicates an error.
+            if (received_bytes < 0)
             {
                 perror("MAIN: ERROR client recvfrom() failed\n");
             }
+
+            //Else, data must be parsed. Need to
+            //determine what kind of message was
+            //received.
             else
             {
                 printf(
-                    "Rcvd datagram from %s port %d\n",
-                    inet_ntoa(client.sin_addr),
-                    ntohs(client.sin_port)
+                    "MAIN: Rcvd incoming UDP datagram from: %s\n",
+                    inet_ntoa(client.sin_addr)
                 );
 
-                printf( "RCVD %d bytes\n", received );
-                buffer[received] = '\0';   /* assume that its printable char[] data */
-                printf( "RCVD: [%s]\n", buffer );
+                buffer[received_bytes] = '\0';
 
-                /* echo the data back to the sender/client */
                 int sendto_return_code = sendto(
                     udp_fd,
-                    buffer,
-                    received,
+                    OK,
+                    4,
                     0,
                     (struct sockaddr *) &client,
                     client_sockaddr_length
@@ -236,6 +244,7 @@ int main(int argc, char** argv)
         //currently active client connections.
         if (FD_ISSET(tcp_fd, &read_fds))
         {
+            client_sockaddr_length = sizeof(client);
             int new_sock = accept(
                     tcp_fd,
                     (struct sockaddr *)&client,
