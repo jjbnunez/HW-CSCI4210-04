@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 #include <errno.h>
 #include <pthread.h>
 #include <sys/socket.h>
@@ -23,6 +25,50 @@ int max(int x, int y)
         return x;
     }
     return y;
+}
+
+//Helper function to compare passed-in command
+//over the network to determine validity.
+int has_valid_command(char* message, int length)
+{
+    char temp[BUFFER_SIZE];
+    int stop_index = 0;
+
+    for (int i = 0; i < length; i++)
+    {
+        if (message[i] == ' ')
+        {
+            stop_index = i;
+            break;
+        }
+        else if (!isalnum(message[i]))
+        {
+            return 0;
+        }
+        else
+        {
+            continue;
+        }
+    }
+
+    for (int i = 0; i < stop_index; i++)
+    {
+        temp[i] = message[i];
+    }
+    temp[stop_index] = '\0';
+
+    if (
+        strcmp(temp, "LOGIN") == 0 ||
+        strcmp(temp, "WHO") == 0 ||
+        strcmp(temp, "LOGOUT") == 0 ||
+        strcmp(temp, "SEND") == 0 ||
+        strcmp(temp, "BROADCAST") == 0
+    )
+    {
+        return 1;
+    }
+
+    return 0;
 }
 
 int main(int argc, char** argv)
@@ -168,9 +214,6 @@ int main(int argc, char** argv)
         //loop again.
         if (ready == 0)
         {
-            #ifdef DEBUG_MODE
-            printf("MAIN: select() time limit expired\n");
-            #endif
             continue;
         }
 
@@ -219,13 +262,26 @@ int main(int argc, char** argv)
             //received.
             else
             {
+                //Mandatory acknowledgement log
+                //of a datagram being received.
                 printf(
                     "MAIN: Rcvd incoming UDP datagram from: %s\n",
                     inet_ntoa(client.sin_addr)
                 );
 
+                //Null-terminate the end of the
+                //received message. Dirty, but
+                //it works.
                 buffer[received_bytes] = '\0';
 
+                //TODO: determine the complete
+                //validity of the message
+                //received.
+                int valid_command = has_valid_command(buffer, strlen(buffer));
+
+                //TODO: send various repsonses
+                //based on validity and type of
+                //command.
                 int sendto_return_code = sendto(
                     udp_fd,
                     OK,
