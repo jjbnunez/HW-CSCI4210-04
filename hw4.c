@@ -118,24 +118,11 @@ void* socket_thread(void *arg)
     //Lock before searching for the index.
     while(1)
     {
-        //First, zero the file descriptor set
-        //on every loop, and then set the TCP
-        //and UDP file descriptors in it.
-        FD_ZERO(&read_fds);
-        FD_SET(tcp_fd, &read_fds);
-        FD_SET(udp_fd, &read_fds);
+        pthread_mutex_lock(&lock);
+        FD_CLR(fd, &read_fds);
+        FD_SET(fd, &read_fds);
+        pthread_mutex_unlock(&lock);
 
-        //Then, also set all of the active TCP
-        //connections to the file descriptor
-        //set. These two steps essentially
-        //refresh the file descriptor set with
-        //the most up-to-date information about
-        //all pending and active connections.
-        for (int i = 0; i < client_socket_index; i++)
-        {
-            FD_SET(client_sockets[i], &read_fds);
-        }
-     
         if (FD_ISSET(fd, &read_fds))
         {
             //"n" stores the recv() retval.
@@ -304,15 +291,26 @@ int main(int argc, char** argv)
     printf("MAIN: Listening for TCP connections on port: %d\n", PORT);
     printf("MAIN: Listening for UDP datagrams on port: %d\n", PORT);
 
-    //Zero the file descriptor set, and then set
-    //the TCP and UDP file descriptors in it.
+    //Zero the file descriptor set.
     FD_ZERO(&read_fds);
-    FD_SET(tcp_fd, &read_fds);
-    FD_SET(udp_fd, &read_fds);
+
+    #ifdef DEBUG_MODE
+    printf("MAIN: DEBUG Entering loop.\n"); 
+    #endif
 
     //Main loop. Here's where the magic happens.
     while(1)
     {
+        //Refresh the TCP and UDP file
+        //descriptors in the socket descriptor
+        //set.
+        pthread_mutex_lock(&lock);
+        FD_CLR(tcp_fd, &read_fds);
+        FD_CLR(udp_fd, &read_fds);
+        FD_SET(tcp_fd, &read_fds);
+        FD_SET(udp_fd, &read_fds);
+        pthread_mutex_unlock(&lock);
+
         //Define a wait time for the select()
         //call, so that if it takes long enough
         //while waiting, it restarts the loop.
@@ -325,7 +323,9 @@ int main(int argc, char** argv)
         //the set of file descriptors and the
         //size of the set.
         int ready = select(FD_SETSIZE, &read_fds, NULL, NULL, &timeout);
-
+        #ifdef DEBUG_MODE
+        printf("MAIN: DEBUG select() finished and got %d ready\n", ready); 
+        #endif
         //If select() returns 0, it just means
         //that it timed out. Simply start the
         //loop again.
@@ -355,7 +355,9 @@ int main(int argc, char** argv)
                     (struct sockaddr *)&client,
                     (socklen_t *)&client_sockaddr_length
                 );
-
+            #ifdef DEBUG_MODE
+            printf("MAIN: DEBUG accept() accepted new_sock %d\n", new_sock); 
+            #endif
             if (pthread_create(&client_threads[client_socket_index], NULL, socket_thread, &new_sock) != 0)
             {
                 perror("MAIN: pthread_create() failed to create thread\n");
