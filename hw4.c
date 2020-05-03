@@ -24,6 +24,8 @@ char client_names[MAX_CLIENTS][16];
 pthread_t client_threads[MAX_CLIENTS];
 //Set up variables for select() behavior.
 fd_set read_fds;
+int tcp_fd;
+int udp_fd;
 int client_socket_index = 0;
 //Set up variables to handle client socket
 //descriptors for outbound traffic.
@@ -74,11 +76,13 @@ int has_valid_command(char* message, int length)
     }
     temp[stop_index] = '\0';
 
-    if  (strcmp(temp, "LOGIN") == 0 ) return 1;
-    if  (strcmp(temp, "WHO") == 0)  return 2;
-    if  (strcmp(temp, "LOGOUT") == 0)  return 3;
-    if  (strcmp(temp, "SEND") == 0)  return 4;
-    if  (strcmp(temp, "BROADCAST") == 0)  return 5;
+    if  (strcmp(temp, "LOGIN") == 0 ||
+        strcmp(temp, "WHO") == 0|| 
+        strcmp(temp, "LOGOUT") == 0|| 
+        strcmp(temp, "SEND") == 0|| 
+        strcmp(temp, "BROADCAST") == 0){
+            return stop_index;
+		}  
 
     return 0;
 }
@@ -107,6 +111,12 @@ void* socket_thread(void *arg)
     //descriptor.
     int fd = *((int *)arg);
 
+    //Place the new socket in the list of client
+    //sockets.
+    pthread_mutex_lock(&lock);
+    client_sockets[client_socket_index++] = fd;
+    pthread_mutex_unlock(&lock);
+
     //Temp variable for number of bytes pending.
     int n  = -1;
     
@@ -119,104 +129,99 @@ void* socket_thread(void *arg)
     //Lock before searching for the index.
     while(1)
     {
-        pthread_mutex_lock(&lock);
-        current_socket_index = find_index_of_socket(fd);
-        pthread_mutex_unlock(&lock);
+        //First, zero the file descriptor set
+        //on every loop, and then set the TCP
+        //and UDP file descriptors in it.
+        FD_ZERO(&read_fds);
+        FD_SET(tcp_fd, &read_fds);
+        FD_SET(udp_fd, &read_fds);
 
-        //Check if the index was valid.
-        if (current_socket_index == -1)
+        //Then, also set all of the active TCP
+        //connections to the file descriptor
+        //set. These two steps essentially
+        //refresh the file descriptor set with
+        //the most up-to-date information about
+        //all pending and active connections.
+        for (int i = 0; i < client_socket_index; i++)
         {
-            fprintf(stderr, "CHILD %ld: find_index_of_socket() failed to find file descriptor\n", pthread_self());
-            pthread_exit(0);
+            FD_SET(client_sockets[i], &read_fds);
         }
-
-        //If the current file descriptor is
-        //ready with a pending message, run
-        //recv() on it and store its message
-        //in the buffer.
+     
         if (FD_ISSET(fd, &read_fds))
         {
             //"n" stores the recv() retval.
             n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
 
-            //If the current file descriptor is
-            //ready with a pending message, run
-            //recv() on it and store its message
-            //in the buffer.
-            if (FD_ISSET(fd, &read_fds))
+            //If "n" is less than 0, that
+            //means recv() failed. However,
+            //do not exit.
+            if (n < 0)
             {
-                //"n" stores the recv() retval.
-                n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
+                perror("MAIN: ERROR client recv() failed\n");
+            }
 
-                //If "n" is less than 0, that
-                //means recv() failed. However,
-                //do not exit.
-                if (n < 0)
+            //Else, if "n" equals 0, that
+            //means the client just closed
+            //the connection. Remove its
+            //file descriptor from the list
+            //of active clients.
+            else if (n == 0)
+            {
+                pthread_mutex_lock(&lock);
+                //Announce closure of the file descriptor.
+                printf("CHILD %ld: Client on fd %d closed connection\n", pthread_self(), fd);
+                close(fd);
+
+                //Shift all of the clients
+                //ahead of the removed
+                //client to the left by one
+                //step to manage space.
+                for (int k = 0; k < client_socket_index; k++)
                 {
-                    perror("MAIN: ERROR client recv() failed\n");
-                }
-
-                //Else, if "n" equals 0, that
-                //means the client just closed
-                //the connection. Remove its
-                //file descriptor from the list
-                //of active clients.
-                else if (n == 0)
-                {
-                    pthread_mutex_lock(&lock);
-                    //Announce closure of the file descriptor.
-                    printf("CHILD %ld: Client on fd %d closed connection\n", pthread_self(), fd);
-                    close(fd);
-
-                    //Shift all of the clients
-                    //ahead of the removed
-                    //client to the left by one
-                    //step to manage space.
-                    for (int k = 0; k < client_socket_index; k++)
+                    if (fd == client_sockets[k])
                     {
-                        if (fd == client_sockets[k])
+                        for (int m = k ; m < client_socket_index - 1 ; m++)
                         {
-                            for (int m = k ; m < client_socket_index - 1 ; m++)
-                            {
-                                client_sockets[m] = client_sockets[m + 1];
-                            }
-                            client_sockets[client_socket_index] = 0;
-                            client_socket_index--;
-                            break;
+                            client_sockets[m] = client_sockets[m + 1];
                         }
+                        client_sockets[client_socket_index] = 0;
+                        client_socket_index--;
+                        break;
                     }
-                    pthread_mutex_unlock(&lock);
                 }
+                pthread_mutex_unlock(&lock);
+                pthread_exit(0);
+            }
 
-                //Else, "n" is clearly greater
-                //than 0. This means there is a
-                //message, and "n" represents
-                //how long that message is.
-                else
+            //Else, "n" is clearly greater
+            //than 0. This means there is a
+            //message, and "n" represents
+            //how long that message is.
+            else
+            {
+                //Apply a null terminator to
+                //the end of the expected
+                //message space.
+                buffer[n] = '\0';
+
+                //Announce that message was
+                //received, and from where.
+                printf(
+                    "CHILD %ld: Rcvd message from %s: %s\n",
+                    pthread_self(),
+                    inet_ntoa((struct in_addr)client.sin_addr),
+                    buffer
+                );
+                int command =  has_valid_command(buffer, strlen(buffer));
+                if (command  == 1) printf("Child <%ld>: Rcvd LOGIN request for userid %s\n",pthread_self(),buffer);
+                //Send back an ACK for the
+                //TCP connection and ensure
+                //the send() call matched
+                //the message length.
+                n = send(fd, OK, 4, 0);
+                if (n != 4)
                 {
-                    //Apply a null terminator to
-                    //the end of the expected
-                    //message space.
-                    buffer[n] = '\0';
-
-                    //Announce that message was
-                    //received, and from where.
-                    printf(
-                        "CHILD %ld: Rcvd message from %s: %s\n",
-                        pthread_self(),
-                        inet_ntoa((struct in_addr)client.sin_addr),
-                        buffer
-                    );
-
-                    //Send back an ACK for the
-                    //TCP connection and ensure
-                    //the send() call matched
-                    //the message length.
-                    n = send(fd, OK, 4, 0);
-                    if (n != 4)
-                    {
-                        fprintf(stderr, "CHILD %ld: ERROR send() failed\n", pthread_self());
-                    }
+                    fprintf(stderr, "CHILD %ld: ERROR send() failed\n", pthread_self());
                 }
             }
         }
@@ -240,7 +245,7 @@ int main(int argc, char** argv)
     //Initialize the TCP socket object, and
     //validate the socket descriptor. For
     //context, "fd" stands for "file descriptor".
-    int tcp_fd = socket(AF_INET, SOCK_STREAM, 0);
+    tcp_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (tcp_fd == -1)
     {
         perror("MAIN: ERROR socket() call failed for TCP\n");
@@ -249,7 +254,7 @@ int main(int argc, char** argv)
 
     //Initialize the UDP socket object, and
     //validate the descriptor result.
-    int udp_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    udp_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_fd == -1)
     {
         perror("MAIN: ERROR socket() call failed for UDP\n");
@@ -444,15 +449,12 @@ int main(int argc, char** argv)
                     (struct sockaddr *)&client,
                     (socklen_t *)&client_sockaddr_length
                 );
-            pthread_mutex_lock(&lock);
-            num_threads++;
+
             if (pthread_create(&client_threads[num_threads-1], NULL, socket_thread, &new_sock) != 0)
             {
                 perror("MAIN: pthread_create() failed to create thread\n");
                 exit(EXIT_FAILURE);
             }
-            client_sockets[client_socket_index++] = new_sock;
-            pthread_mutex_unlock(&lock);
         }
         /*
         //Now, cycle through all of the active
