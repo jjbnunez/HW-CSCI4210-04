@@ -14,7 +14,7 @@
 #define BUFFER_SIZE 1024
 #define OK "OK!\n"
 
-//Global space for list of connected clients.
+//Global variables for list of clients.
 int client_sockets[MAX_CLIENTS];
 char client_names[MAX_CLIENTS][16];
 pthread_t client_threads[MAX_CLIENTS];
