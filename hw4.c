@@ -9,30 +9,28 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
-//This program supports a maximum of 32 clients
-//at once. Also, the port is specified here as a
-//macro for convenience.
 #define PORT 9876
 #define MAX_CLIENTS 32
 #define BUFFER_SIZE 1024
 #define OK "OK!\n"
 
-//Global space for list of connected clients
-//set in accordance to the login names.
+//Global space for list of connected clients.
 int client_sockets[MAX_CLIENTS];
 char client_names[MAX_CLIENTS][16];
 pthread_t client_threads[MAX_CLIENTS];
-//Set up variables for select() behavior.
+
+//Global variables for select() behavior.
 fd_set read_fds;
 int tcp_fd;
 int udp_fd;
 int client_socket_index = 0;
-//Set up variables to handle client socket
+
+//Global variables to handle client socket
 //descriptors for outbound traffic.
 struct sockaddr_in client;
 int client_sockaddr_length;
-int num_threads = 0;
-//Mutex locker.
+
+//Global mutex locker.
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 //Helper function to get the maximum
@@ -450,7 +448,7 @@ int main(int argc, char** argv)
                     (socklen_t *)&client_sockaddr_length
                 );
 
-            if (pthread_create(&client_threads[num_threads-1], NULL, socket_thread, &new_sock) != 0)
+            if (pthread_create(&client_threads[client_socket_index], NULL, socket_thread, &new_sock) != 0)
             {
                 perror("MAIN: pthread_create() failed to create thread\n");
                 exit(EXIT_FAILURE);
