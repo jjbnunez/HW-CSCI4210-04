@@ -74,7 +74,7 @@ int has_valid_command(char* message, int length)
 
     for (int i = 0; i < length; i++)
     {
-        if (message[i] == ' ')
+        if (message[i] == ' ' || message[i] == '\n')
         {
             stop_index = i;
             break;
@@ -121,6 +121,10 @@ int get_thread_index(int socket)
 //Starts a new thread for a TCP connection.
 void* socket_thread(void *arg)
 {
+    //Detach the thread immediately since the
+    //thread doesn't need to be joined.
+    pthread_detach(pthread_self());
+
     //Check if arg is valid. If not,
     //immediately close the thread.
     if (!arg)
@@ -142,8 +146,6 @@ void* socket_thread(void *arg)
     //Initialize current thread index variable.
     int current_thread_index = -1;
 
-    //
-
     while(1)
     {
         pthread_mutex_lock(&lock);
@@ -153,18 +155,18 @@ void* socket_thread(void *arg)
 
         if (FD_ISSET(fd, &read_fds))
         {
-            //"n" stores the recv() retval.
-            received_bytes = recv(fd, local_buffer, BUFFER_SIZE - 1, 0);
+            //Store the recv() retval.
+            received_bytes = recv(fd, local_buffer, BUFFER_SIZE-1, 0);
 
-            //If "n" is less than 0, that
-            //means recv() failed. However,
-            //do not exit.
+            //If it is less than 0, that means
+            //recv() failed. However, do not
+            //exit.
             if (received_bytes < 0)
             {
                 perror("MAIN: ERROR client recv() failed\n");
             }
 
-            //Else, if "n" equals 0, that
+            //Else, if we received 0, that
             //means the client just closed
             //the connection. Remove its
             //file descriptor from the list
@@ -175,14 +177,31 @@ void* socket_thread(void *arg)
                 printf("CHILD %ld: Client on fd %d closed connection\n", pthread_self(), fd);
                 FD_CLR(fd, &read_fds);
                 close(fd);
+                for (int i = 0 ; i < num_clients; i++)
+                {
+                    if (fd == client_sockets[i])
+                    {
+                        for (int j = i; j < num_clients - 1; j++)
+                        {
+                            client_sockets[j] = client_sockets[j+1];
+                            client_threads[j] = client_threads[j+1];
+                            strncpy(client_names[j], client_names[j+1], 16);
+                        }
+                        client_sockets[num_clients] = 0;
+                        client_threads[num_clients] = 0;
+                        strncpy(client_names[num_clients], "\0", 16);
+                        num_clients--;
+                        break;  /* all done */
+                    }
+                }
                 pthread_mutex_unlock(&lock);
                 pthread_exit(0);
             }
 
-            //Else, "n" is clearly greater
+            //Else, it is clearly greater
             //than 0. This means there is a
-            //message, and "n" represents
-            //how long that message is.
+            //message, and we know how long that
+            //message is.
             else
             {
                 //Apply a null terminator to
@@ -449,5 +468,5 @@ int main(int argc, char** argv)
     }
 
     //Terminate.
-    return 0;
+    return EXIT_SUCCESS;
 }
