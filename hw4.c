@@ -121,7 +121,7 @@ void* socket_thread(void *arg)
     int n  = -1;
     
     //Initialize current socket index variable.
-    int current_socket_index = -1;
+    //int current_socket_index = -1;
 
     //Local string buffer for the thread.
     char buffer[BUFFER_SIZE];
@@ -420,12 +420,12 @@ int main(int argc, char** argv)
                 //TODO: determine the complete
                 //validity of the message
                 //received.
-                int valid_command = has_valid_command(buffer, strlen(buffer));
+                has_valid_command(buffer, strlen(buffer));
 
                 //TODO: send various repsonses
                 //based on validity and type of
                 //command.
-                int sendto_return_code = sendto(
+                sendto(
                     udp_fd,
                     OK,
                     4,
