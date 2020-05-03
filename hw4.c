@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <unistd.h> 
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
@@ -17,11 +18,21 @@
 #define OK "OK!\n"
 
 //Global space for list of connected clients
-//set in accordance to the login names
+//set in accordance to the login names.
 int client_sockets[MAX_CLIENTS];
 char client_names[MAX_CLIENTS][16];
+//Shared string buffer.
+char buffer[BUFFER_SIZE];
+//Set up variables for select() behavior.
+fd_set read_fds;
+int client_socket_index = 0;
+//Set up variables to handle client socket
+//descriptors for outbound traffic.
+struct sockaddr_in client;
+int client_sockaddr_length;
 
 
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 //Helper function to get the maximum
 //between two integers.
@@ -78,6 +89,20 @@ int has_valid_command(char* message, int length)
     return 0;
 }
 
+
+void* socket_thread(void *arg)
+{
+    if (!arg)
+    {
+        pthread_exit(0);
+    }
+    int fd = *((int *)arg);
+
+    char buffer[BUFFER_SIZE];
+
+    int n = -1;
+}
+
 int main(int argc, char** argv)
 {
     //Ensure no buffered output for stdout and
@@ -86,18 +111,8 @@ int main(int argc, char** argv)
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
-    //Initialize a string buffer. This will be
-    //temporary as this needs to actually
-    //implement string buffers on a per-thread
-    //basis.
-    char buffer[BUFFER_SIZE];
-
     //Announce that the main process is running.
     printf("MAIN: Started server\n");
-
-    //Set up variables for select() behavior.
-    fd_set read_fds;
-    int client_socket_index = 0;
     
     //Initialize the TCP socket object, and
     //validate the socket descriptor. For
@@ -132,12 +147,6 @@ int main(int argc, char** argv)
     struct sockaddr_in udp_server;
     udp_server.sin_family = AF_INET;
     udp_server.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    //Likewise delcare a client sockaddr struct
-    //for temporarily storing client file
-    //descriptor information.
-    struct sockaddr_in client;
-    int client_sockaddr_length;
 
     //Specify the target port and lengths.
     //htons() and htonl() convert the provided
