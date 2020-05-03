@@ -44,8 +44,8 @@ int max(int x, int y)
     return y;
 }
 
-//Helper function to compare passed-in command
-//over the network to determine validity.
+//Helper function to derive the passed-in
+//command from the outside.
 int has_valid_command(char* message, int length)
 {
     char temp[BUFFER_SIZE];
@@ -85,6 +85,8 @@ int has_valid_command(char* message, int length)
     return 0;
 }
 
+//Helper function to find the index of a TCP
+//client connection in the sockets array.
 int find_index_of_socket(int socket)
 {
     for (int i = 0; i < client_socket_index; i++)
@@ -226,6 +228,7 @@ void* socket_thread(void *arg)
     }
 }
 
+//Main function.
 int main(int argc, char** argv)
 {
     //Ensure no buffered output for stdout and
