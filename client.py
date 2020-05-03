@@ -6,7 +6,7 @@ import time
 
 
 TCP_IP = '127.0.0.1'
-TCP_PORT = 5050
+TCP_PORT = 9876
 BUFFER_SIZE = 1024
 commands = ["LOGIN liezer\n", "LOGIN fingerbird\n", "WHO\n", "BROADCAST 12\n", "HELLO WORLD!\n", "SEND Stephen 6\n", "HELLO!\n", "LOGOUT\n"]
 udp_commands = ["WHO\n"]
@@ -14,7 +14,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((TCP_IP, TCP_PORT))
 
 UDP_IP = "127.0.0.1"
-UDP_PORT = 5051 + random.randint(1, 100)
+UDP_PORT = 9877 + random.randint(1, 100)
 
 sock = socket.socket(socket.AF_INET, # Internet
                      socket.SOCK_DGRAM) # UDP
@@ -34,6 +34,6 @@ s.close()
 
 for MESSAGE in udp_commands:
 	print "sent udp message: ", MESSAGE
-	sock.sendto(MESSAGE, (UDP_IP, 5050))
+	sock.sendto(MESSAGE, (UDP_IP, 9876))
 	data, addr = sock.recvfrom(1024)
 	print "received message: ", data
