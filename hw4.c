@@ -19,6 +19,9 @@ int client_sockets[MAX_CLIENTS];
 char client_names[MAX_CLIENTS][16];
 pthread_t client_threads[MAX_CLIENTS];
 
+//Global string buffer.
+char buffer[BUFFER_SIZE];
+
 //Global variables for select() behavior.
 fd_set read_fds;
 int tcp_fd;
@@ -111,9 +114,6 @@ void* socket_thread(void *arg)
     
     //Initialize current socket index variable.
     //int current_socket_index = -1;
-
-    //Local string buffer for the thread.
-    char buffer[BUFFER_SIZE];
 
     //Lock before searching for the index.
     while(1)
@@ -225,9 +225,6 @@ int main(int argc, char** argv)
     //Submitty.
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
-
-    //String buffer for the main() function.
-    char buffer[BUFFER_SIZE];
 
     //Announce that the main process is running.
     printf("MAIN: Started server\n");
