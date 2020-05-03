@@ -21,8 +21,7 @@
 //set in accordance to the login names.
 int client_sockets[MAX_CLIENTS];
 char client_names[MAX_CLIENTS][16];
-//Shared string buffer.
-char buffer[BUFFER_SIZE];
+pthread_t client_threads[MAX_CLIENTS];
 //Set up variables for select() behavior.
 fd_set read_fds;
 int client_socket_index = 0;
@@ -30,8 +29,8 @@ int client_socket_index = 0;
 //descriptors for outbound traffic.
 struct sockaddr_in client;
 int client_sockaddr_length;
-
-
+int num_threads = 0;
+//Mutex locker.
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 //Helper function to get the maximum
@@ -75,32 +74,153 @@ int has_valid_command(char* message, int length)
     }
     temp[stop_index] = '\0';
 
-    if (
-        strcmp(temp, "LOGIN") == 0 ||
-        strcmp(temp, "WHO") == 0 ||
-        strcmp(temp, "LOGOUT") == 0 ||
-        strcmp(temp, "SEND") == 0 ||
-        strcmp(temp, "BROADCAST") == 0
-    )
-    {
-        return 1;
-    }
+    if  (strcmp(temp, "LOGIN") == 0 ) return 1;
+    if  (strcmp(temp, "WHO") == 0)  return 2;
+    if  (strcmp(temp, "LOGOUT") == 0)  return 3;
+    if  (strcmp(temp, "SEND") == 0)  return 4;
+    if  (strcmp(temp, "BROADCAST") == 0)  return 5;
 
     return 0;
 }
 
+int find_index_of_socket(int socket)
+{
+    for (int i = 0; i < client_socket_index; i++)
+    {
+        if (client_sockets[i] == socket)
+            return i;
+    }
+    return -1;
+}
 
+//Starts a new thread for a TCP connection.
 void* socket_thread(void *arg)
 {
+    //Check if arg is valid. If not,
+    //immediately close the thread.
     if (!arg)
     {
         pthread_exit(0);
     }
+
+    //Else, capture the new socket file
+    //descriptor.
     int fd = *((int *)arg);
 
+    //Temp variable for number of bytes pending.
+    int n  = -1;
+    
+    //Initialize current socket index variable.
+    int current_socket_index = -1;
+
+    //Local string buffer for the thread.
     char buffer[BUFFER_SIZE];
 
-    int n = -1;
+    //Lock before searching for the index.
+    while(1)
+    {
+        pthread_mutex_lock(&lock);
+        current_socket_index = find_index_of_socket(fd);
+        pthread_mutex_unlock(&lock);
+
+        //Check if the index was valid.
+        if (current_socket_index == -1)
+        {
+            fprintf(stderr, "CHILD %ld: find_index_of_socket() failed to find file descriptor\n", pthread_self());
+            pthread_exit(0);
+        }
+
+        //If the current file descriptor is
+        //ready with a pending message, run
+        //recv() on it and store its message
+        //in the buffer.
+        if (FD_ISSET(fd, &read_fds))
+        {
+            //"n" stores the recv() retval.
+            n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
+
+            //If the current file descriptor is
+            //ready with a pending message, run
+            //recv() on it and store its message
+            //in the buffer.
+            if (FD_ISSET(fd, &read_fds))
+            {
+                //"n" stores the recv() retval.
+                n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
+
+                //If "n" is less than 0, that
+                //means recv() failed. However,
+                //do not exit.
+                if (n < 0)
+                {
+                    perror("MAIN: ERROR client recv() failed\n");
+                }
+
+                //Else, if "n" equals 0, that
+                //means the client just closed
+                //the connection. Remove its
+                //file descriptor from the list
+                //of active clients.
+                else if (n == 0)
+                {
+                    pthread_mutex_lock(&lock);
+                    //Announce closure of the file descriptor.
+                    printf("CHILD %ld: Client on fd %d closed connection\n", pthread_self(), fd);
+                    close(fd);
+
+                    //Shift all of the clients
+                    //ahead of the removed
+                    //client to the left by one
+                    //step to manage space.
+                    for (int k = 0; k < client_socket_index; k++)
+                    {
+                        if (fd == client_sockets[k])
+                        {
+                            for (int m = k ; m < client_socket_index - 1 ; m++)
+                            {
+                                client_sockets[m] = client_sockets[m + 1];
+                            }
+                            client_sockets[client_socket_index] = 0;
+                            client_socket_index--;
+                            break;
+                        }
+                    }
+                    pthread_mutex_unlock(&lock);
+                }
+
+                //Else, "n" is clearly greater
+                //than 0. This means there is a
+                //message, and "n" represents
+                //how long that message is.
+                else
+                {
+                    //Apply a null terminator to
+                    //the end of the expected
+                    //message space.
+                    buffer[n] = '\0';
+
+                    //Announce that message was
+                    //received, and from where.
+                    printf(
+                        "CHILD %ld: Rcvd message from %s: %s\n",
+                        pthread_self(),
+                        inet_ntoa((struct in_addr)client.sin_addr),
+                        buffer
+                    );
+
+                    //Send back an ACK for the
+                    //TCP connection and ensure
+                    //the send() call matched
+                    //the message length.
+                    n = send(fd, OK, 4, 0);
+                    if (n != 4)
+                    {
+                        fprintf(stderr, "CHILD %ld: ERROR send() failed\n", pthread_self());
+                    }
+                }
+            }
+        }
+    }
 }
 
 int main(int argc, char** argv)
@@ -110,6 +230,9 @@ int main(int argc, char** argv)
     //Submitty.
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+
+    //String buffer for the main() function.
+    char buffer[BUFFER_SIZE];
 
     //Announce that the main process is running.
     printf("MAIN: Started server\n");
@@ -321,18 +444,23 @@ int main(int argc, char** argv)
                     (struct sockaddr *)&client,
                     (socklen_t *)&client_sockaddr_length
                 );
-            #ifdef DEBUG_MODE
-            printf("MAIN: accept() successful for client connection\n");
-            #endif
+            pthread_mutex_lock(&lock);
+            num_threads++;
+            if (pthread_create(&client_threads[num_threads-1], NULL, socket_thread, &new_sock) != 0)
+            {
+                perror("MAIN: pthread_create() failed to create thread\n");
+                exit(EXIT_FAILURE);
+            }
             client_sockets[client_socket_index++] = new_sock;
+            pthread_mutex_unlock(&lock);
         }
-
+        /*
         //Now, cycle through all of the active
         //client connections.
         for (int i = 0; i < client_socket_index; i++)
         {   
             //Capture the current file
-            //descriptor. Likewise, create a
+            //descriptor. Likewise, c a
             //variable "n" for storing recv()
             //results. The default for "n" is
             //-1.
@@ -417,6 +545,7 @@ int main(int argc, char** argv)
                 }
             }
         }
+        */
     }
 
     //Terminate.
