@@ -304,31 +304,18 @@ int main(int argc, char** argv)
     printf("MAIN: Listening for TCP connections on port: %d\n", PORT);
     printf("MAIN: Listening for UDP datagrams on port: %d\n", PORT);
 
+    //Zero the file descriptor set, and then set
+    //the TCP and UDP file descriptors in it.
+    FD_ZERO(&read_fds);
+    FD_SET(tcp_fd, &read_fds);
+    FD_SET(udp_fd, &read_fds);
+
     //Main loop. Here's where the magic happens.
     while(1)
     {
-        //First, zero the file descriptor set
-        //on every loop, and then set the TCP
-        //and UDP file descriptors in it.
-        FD_ZERO(&read_fds);
-        FD_SET(tcp_fd, &read_fds);
-        FD_SET(udp_fd, &read_fds);
-
-        //Then, also set all of the active TCP
-        //connections to the file descriptor
-        //set. These two steps essentially
-        //refresh the file descriptor set with
-        //the most up-to-date information about
-        //all pending and active connections.
-        for (int i = 0; i < client_socket_index; i++)
-        {
-            FD_SET(client_sockets[i], &read_fds);
-        }
-
-        //Then, define a wait time for the
-        //select() call, so that if it takes
-        //long enough while waiting, it restarts
-        //the loop.
+        //Define a wait time for the select()
+        //call, so that if it takes long enough
+        //while waiting, it restarts the loop.
         struct timeval timeout;
         timeout.tv_sec = 2;
         timeout.tv_usec = 500;
@@ -355,11 +342,26 @@ int main(int argc, char** argv)
             return EXIT_FAILURE;
         }
 
-        //Here's a debug statement to track how
-        //many file descriptors are ready.
-        #ifdef DEBUG_MODE
-        printf("MAIN: select() found %d ready file descriptors\n", ready);
-        #endif
+        //If the TCP file descriptor is ready
+        //with a pending connection, run
+        //accept() on it. Then, add the new
+        //file descriptor to the array of
+        //currently active client connections.
+        if (FD_ISSET(tcp_fd, &read_fds))
+        {
+            client_sockaddr_length = sizeof(client);
+            int new_sock = accept(
+                    tcp_fd,
+                    (struct sockaddr *)&client,
+                    (socklen_t *)&client_sockaddr_length
+                );
+
+            if (pthread_create(&client_threads[client_socket_index], NULL, socket_thread, &new_sock) != 0)
+            {
+                perror("MAIN: pthread_create() failed to create thread\n");
+                exit(EXIT_FAILURE);
+            }
+        }
 
         //If the UDP file descriptor is ready
         //with a pending connection, receive the
@@ -422,119 +424,6 @@ int main(int argc, char** argv)
                 );
             }
         }
-
-        //If the TCP file descriptor is ready
-        //with a pending connection, run
-        //accept() on it. Then, add the new
-        //file descriptor to the array of
-        //currently active client connections.
-        if (FD_ISSET(tcp_fd, &read_fds))
-        {
-            client_sockaddr_length = sizeof(client);
-            int new_sock = accept(
-                    tcp_fd,
-                    (struct sockaddr *)&client,
-                    (socklen_t *)&client_sockaddr_length
-                );
-
-            if (pthread_create(&client_threads[client_socket_index], NULL, socket_thread, &new_sock) != 0)
-            {
-                perror("MAIN: pthread_create() failed to create thread\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-        /*
-        //Now, cycle through all of the active
-        //client connections.
-        for (int i = 0; i < client_socket_index; i++)
-        {   
-            //Capture the current file
-            //descriptor. Likewise, c a
-            //variable "n" for storing recv()
-            //results. The default for "n" is
-            //-1.
-            int fd = client_sockets[i];
-            int n = -1;
-
-            //If the current file descriptor is
-            //ready with a pending message, run
-            //recv() on it and store its message
-            //in the buffer.
-            if (FD_ISSET(fd, &read_fds))
-            {
-                //"n" stores the recv() retval.
-                n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
-
-                //If "n" is less than 0, that
-                //means recv() failed. However,
-                //do not exit.
-                if (n < 0)
-                {
-                    perror("MAIN: ERROR client recv() failed\n");
-                }
-
-                //Else, if "n" equals 0, that
-                //means the client just closed
-                //the connection. Remove its
-                //file descriptor from the list
-                //of active clients.
-                else if (n == 0)
-                {
-                    //Announce closure of the file descriptor.
-                    printf("MAIN: Client on fd %d closed connection\n", fd);
-                    close(fd);
-
-                    //Shift all of the clients
-                    //ahead of the removed
-                    //client to the left by one
-                    //step to manage space.
-                    for (int k = 0; k < client_socket_index; k++)
-                    {
-                        if (fd == client_sockets[k])
-                        {
-                            for (int m = k ; m < client_socket_index - 1 ; m++)
-                            {
-                                client_sockets[m] = client_sockets[m + 1];
-                            }
-                            client_sockets[client_socket_index] = 0;
-                            client_socket_index--;
-                            break;
-                        }
-                    }
-                }
-
-                //Else, "n" is clearly greater
-                //than 0. This means there is a
-                //message, and "n" represents
-                //how long that message is.
-                else
-                {
-                    //Apply a null terminator to
-                    //the end of the expected
-                    //message space.
-                    buffer[n] = '\0';
-
-                    //Announce that message was
-                    //received, and from where.
-                    printf(
-                        "MAIN: Rcvd message from %s: %s\n",
-                        inet_ntoa((struct in_addr)client.sin_addr),
-                        buffer
-                    );
-
-                    //Send back an ACK for the
-                    //TCP connection and ensure
-                    //the send() call matched
-                    //the message length.
-                    n = send( fd, "ACK\n", 4, 0 );
-                    if ( n != 4 )
-                    {
-                        perror( "MAIN: ERROR send() failed\n");
-                    }
-                }
-            }
-        }
-        */
     }
 
     //Terminate.
