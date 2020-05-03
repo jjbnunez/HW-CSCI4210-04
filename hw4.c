@@ -33,17 +33,6 @@ int client_sockaddr_length;
 //Global mutex locker.
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-//Helper function to get the maximum
-//between two integers.
-int max(int x, int y)
-{
-    if (x > y)
-    {
-        return x;
-    }
-    return y;
-}
-
 //Helper function to derive the passed-in
 //command from the outside.
 int has_valid_command(char* message, int length)
