@@ -37,23 +37,55 @@ int client_sockaddr_length;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 //Gets a string after a command
-char* get_message(char* message, int start){
+char* get_message(char* message, int start)
+{
     char* temp = malloc(sizeof(char[BUFFER_SIZE]));
     int stop_index = 0;
 
     for (int i = start; i < BUFFER_SIZE; i++)
     {
-        if (message[i] == ' '|| message[i] == '\n')
+        if (message[i] == ' ' || message[i] == '\n' )
         {
             stop_index = i;
             break;
         }
-        
+        /*
         else if (!isalnum(message[i]))
         {
-            temp[0]='.';
+            strcpy(temp, ".");
             return temp;
+        }*/
+        else
+        {
+            continue;
         }
+    }
+    int length = stop_index - start;
+    for (int i = 0; i < length; i++)
+    {
+        temp[i] = message[i+start];
+    }
+    return temp;
+}
+
+char* get_message_send(char* message, int start)
+{
+    char* temp = malloc(sizeof(char[BUFFER_SIZE]));
+    int stop_index = 0;
+
+    for (int i = start; i < BUFFER_SIZE; i++)
+    {
+        if ( message[i] == '\n' )
+        {
+            stop_index = i;
+            break;
+        }
+        /*
+        else if (!isalnum(message[i]))
+        {
+            strcpy(temp, ".");
+            return temp;
+        }*/
         else
         {
             continue;
@@ -110,7 +142,9 @@ int has_valid_command(char* message, int length)
 //thread in the client threads array.
 int get_thread_index(pthread_t thread_id)
 {
+    #ifdef DEBUG_MODE
     printf("Child <%ld>: DEBUG get_thread_index() num_clients is %d\n", pthread_self(), num_clients);
+    #endif
     for (int i = 0; i < num_clients; i++)
     {
         if (client_threads[i] == thread_id)
@@ -144,7 +178,7 @@ void send_ok(int fd,int received_bytes)
     received_bytes = send(fd, OK, 4, 0);
     if (received_bytes != 4)
     {
-        fprintf(stderr, "CHILD %ld: ERROR send() failed\n", pthread_self());
+        fprintf(stderr, "Child <%ld>: ERROR send() failed\n", pthread_self());
     }
 }
 
@@ -152,7 +186,7 @@ void send_msg(int fd,int received_bytes,char* msg){
     received_bytes = send(fd, msg, strlen(msg), 0);
     if (received_bytes != strlen(msg))
     {
-        fprintf(stderr, "CHILD %ld: ERROR send() failed\n", pthread_self());
+        fprintf(stderr, "Child <%ld>: ERROR send() failed\n", pthread_self());
     }
 }
 
@@ -202,6 +236,32 @@ int is_valid_username(char* username)
     return 1;
 }
 
+int is_valid_message_length(char* message_length)
+{
+    //Obviously, return if the function received
+    //NULL as a message. Seg faults are bad.
+    if (message_length == NULL)
+    {
+        return 0;
+    }
+
+    //Determine the length of the message.
+    int length = strlen(message_length);
+
+    //This function expects there NOT to be a
+    //newline character at the end of a message.
+    for (int i = 0; i < length; i++)
+    {
+        if (!isdigit(message_length[i]))
+        {
+            return 0;
+        }
+    }
+
+    //The trials have been passed.
+    return 1;
+}
+
 int get_username_index(char* username)
 {
     //Seg faults are bad.
@@ -223,7 +283,9 @@ int get_username_index(char* username)
     //If not found, return -1.
     return -1;
 }
+void udpeepee(){
 
+}
 //Starts a new thread for a TCP connection.
 void* socket_thread(void *arg)
 {
@@ -237,7 +299,7 @@ void* socket_thread(void *arg)
     //immediately close the thread.
     if (!arg)
     {
-        fprintf(stderr, "CHILD %ld: ERROR bad arg passed into pthread_create()\n", pthread_self());
+        fprintf(stderr, "Child <%ld>: ERROR bad arg passed into pthread_create()\n", pthread_self());
         pthread_mutex_unlock(&lock);
         pthread_exit(NULL);
     }
@@ -302,7 +364,7 @@ void* socket_thread(void *arg)
             else if (received_bytes == 0)
             {
                 pthread_mutex_lock(&lock);
-                printf("CHILD %ld: Client on fd %d closed connection\n", pthread_self(), fd);
+                printf("Child <%ld>: Client on fd %d closed connection\n", pthread_self(), fd);
                 FD_CLR(fd, &read_fds);
                 close(fd);
                 for (int i = 0 ; i < num_clients; i++)
@@ -366,19 +428,21 @@ void* socket_thread(void *arg)
                     if (is_valid_username(message) == 0)
                     {
                         pthread_mutex_unlock(&lock);
-                        fprintf(stderr, "CHILD %ld: ERROR Invalid userid %s\n", pthread_self(), message);
+                        fprintf(stderr, "Child <%ld>: ERROR Invalid userid %s\n", pthread_self(), message);
                         pthread_exit(NULL);
                     }
                     else if (get_username_index(message) != -1)
                     {
                         pthread_mutex_unlock(&lock);
-                        fprintf(stderr, "CHILD %ld: ERROR Already connected\n", pthread_self());
+                        fprintf(stderr, "Child <%ld>: ERROR Already connected\n", pthread_self());
                         pthread_exit(NULL);
                     }
                     else
                     {
                         current_thread_index = get_thread_index(pthread_self());
-                        printf("Child<%ld>: DEBUG current_thread_index is %d\n", pthread_self(), current_thread_index);
+                        #ifdef DEBUG_MODE
+                        printf("Child <%ld>: DEBUG current_thread_index is %d\n", pthread_self(), current_thread_index);
+                        #endif
                         strncpy(client_names[current_thread_index], message, 16);
                         pthread_mutex_unlock(&lock);
                         printf("Child <%ld>: Rcvd LOGIN request for userid %s\n", pthread_self(), message);
@@ -397,7 +461,7 @@ void* socket_thread(void *arg)
                     received_bytes = send(fd, list, strlen(list), 0);
 
                     if (received_bytes != strlen(list))
-                        fprintf(stderr, "CHILD %ld: ERROR WHO request failed\n", pthread_self());
+                        fprintf(stderr, "Child <%ld>: ERROR WHO request failed\n", pthread_self());
 
                     free(list);
                 }
@@ -434,62 +498,111 @@ void* socket_thread(void *arg)
                     pthread_mutex_unlock(&lock);
 
                     pthread_exit(NULL);
-                } 
+                }
+
                 //SEND
-                
-                if (command  == 4){/*
-                    printf("Child <%ld>: Rcvd SEND request for userid %s\n",pthread_self(),local_buffer);
+                if (command  == 4)
+                {
+                    printf("Child <%ld>: Rcvd SEND request for userid %s\n", pthread_self(), local_buffer);
                     
-                    char* userid = get_message(local_buffer,5);
-                    int send_index = 0;
+                    char local_buffer_2[BUFFER_SIZE]; 
+                    received_bytes = recv(fd, local_buffer_2, BUFFER_SIZE-1, 0);
+
+                    char* userid = get_message(local_buffer, 5);
+                    int send_index = -1;
+
+                    pthread_mutex_lock(&lock);
+
                     for (int i = 0; i < num_clients; i++)
                     {
                         if (strcmp(userid,client_names[i])==0)
                             send_index = i;
                     }
-                    if (send_index!=1){
-                        fprintf(stderr, "CHILD %ld: ERROR Unknown userid %s\n", pthread_self(),message);
-                        exit(EXIT_FAILURE);
+
+                    if (send_index == -1)
+                    {
+                        pthread_mutex_unlock(&lock);
+                        fprintf(stderr, "Child <%ld>: ERROR Unknown userid %s\n", pthread_self(),message);
+                        continue;
                     }
 
                     int offset1 =  strlen(userid);
                     
-                    char* msglenchar = get_message(local_buffer,6+offset1);
+                    char* msglenstr = get_message(local_buffer, 6+offset1);
                     
-                    if (strcmp(msglenchar,".")==0){
-                        fprintf(stderr, "CHILD %ld: ERROR Invalid msglen %s\n", pthread_self(),message);
+                    if (is_valid_message_length(msglenstr) == 0)
+                    {
+                        pthread_mutex_unlock(&lock);
+                        fprintf(stderr, "Child <%ld>: ERROR Invalid msglen %s\n", pthread_self(), msglenstr);
                         exit(EXIT_FAILURE);
                     }
 
-                    int msglen = atoi(msglenchar);
+                    int msglen = atoi(msglenstr);
 
-                    if (msglen < 1 || msglen >990){
-                        fprintf(stderr, "CHILD %ld: ERROR Invalid msglen %s\n", pthread_self(),message);
+                    if (msglen < 1 || msglen > 990)
+                    {
+                        pthread_mutex_unlock(&lock);
+                        fprintf(stderr, "Child <%ld>: ERROR Invalid msglen %s\n", pthread_self(), msglenstr);
                         exit(EXIT_FAILURE);
                     }
 
-                    int offset2 =  strlen(msglenchar);
-                    char* message = get_message(local_buffer,8+offset1+offset2);
+                    //int offset2 = strlen(msglenstr);
+                    char* message = get_message_send(local_buffer_2, 0);
 
-                    if (strcmp(message,".")==0){
-                        fprintf(stderr, "CHILD %ld: ERROR Invalid SEND format %s\n", pthread_self(),message);
-                        exit(EXIT_FAILURE);
-                    }
-                    char* send_message = get_send_msg(userid,msglenchar,message);
-                    send_ok(fd,received_bytes);
-                    send_msg(client_sockets[send_index],received_bytes,send_message);
+                    char my_user_id[16];
+                    current_thread_index = get_thread_index(pthread_self());
+                    strcpy(my_user_id, client_names[current_thread_index]);
+
+                    char* send_message = get_send_msg(my_user_id, msglenstr, message);
+                    send_ok(fd, received_bytes);
+                    send_msg(client_sockets[send_index], received_bytes, send_message);
+                    pthread_mutex_unlock(&lock);
 
                     free(send_message);
                     free(message);
-                    free(msglenchar);
+                    free(msglenstr);
                     free(userid);
-                    */
-                   ;
                 }
 
                 //BROADCAST
-                if (command  == 5){
-                    printf("Child <%ld>: Rcvd BROADCAST request for userid %s\n",pthread_self(),local_buffer);
+                if (command == 5)
+                {
+                    char local_buffer_3[BUFFER_SIZE];
+                    printf("Child <%ld>: Rcvd BROADCAST request\n",pthread_self());
+                    received_bytes = recv(fd, local_buffer_3, BUFFER_SIZE-1, 0);
+                    char* msglenstr = get_message(local_buffer, 10);
+
+                    int send_index = 0;
+
+                    if (is_valid_message_length(msglenstr) == 0)
+                    {
+                        pthread_mutex_unlock(&lock);
+                        fprintf(stderr, "Child <%ld>: ERROR Invalid msglen %s\n", pthread_self(), msglenstr);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    int msglen = atoi(msglenstr);
+
+                    if (msglen < 1 || msglen > 990)
+                    {
+                        pthread_mutex_unlock(&lock);
+                        fprintf(stderr, "Child <%ld>: ERROR Invalid msglen %s\n", pthread_self(), msglenstr);
+                        exit(EXIT_FAILURE);
+                    }
+                    char my_user_id[16];
+                    current_thread_index = get_thread_index(pthread_self());
+                    strcpy(my_user_id, client_names[current_thread_index]);
+
+                    char* message = get_message_send(local_buffer_3, 0);
+                    char* send_message = get_send_msg(my_user_id, msglenstr, message);
+                    while (strcmp(client_names[send_index],"\0")!=0 && send_index!=16){
+                        if (strcmp(client_names[send_index],my_user_id)!=0){
+                            send_msg(client_sockets[send_index], received_bytes, send_message);
+                        }
+                        send_index++;
+                    }
+                    pthread_mutex_unlock(&lock);
+
                 }
 
                 if (command == 0)
@@ -712,22 +825,73 @@ int main(int argc, char** argv)
                 //it works.
                 buffer[received_bytes] = '\0';
 
-                //TODO: determine the complete
+                //Determine the complete
                 //validity of the message
                 //received.
-                has_valid_command(buffer, strlen(buffer));
+                int command =  has_valid_command(buffer, strlen(buffer));
 
-                //TODO: send various repsonses
-                //based on validity and type of
-                //command.
-                sendto(
-                    udp_fd,
-                    OK,
-                    4,
-                    0,
-                    (struct sockaddr *) &client,
-                    client_sockaddr_length
-                );
+                //char* message;
+                //char* userid;
+
+                //WHO 
+                if (command == 2)
+                {
+                    printf("MAIN: Rcvd WHO request\n");
+
+                    char* list = set_who_list();
+
+                    received_bytes = sendto(udp_fd, list, strlen(list), 0, (struct sockaddr *) &client, client_sockaddr_length);
+
+                    if (received_bytes != strlen(list))
+                        perror( "MAIN: ERROR WHO request failed\n");
+
+                    free(list);
+                }
+                //SEND
+                if (command == 4)
+                {
+                    perror("MAIN: ERROR SEND not supported over UDP\n");
+                }
+                //BROADCAST
+                if (command == 5)
+                {
+                    char local_buffer_3[BUFFER_SIZE];
+                    printf("MAIN: Rcvd BROADCAST request\n");
+                    received_bytes = recv(udp_fd, local_buffer_3, BUFFER_SIZE-1, 0);
+                    char* msglenstr = get_message(buffer, 10);
+
+                    int send_index = 0;
+
+                    if (is_valid_message_length(msglenstr) == 0)
+                    {
+                        fprintf(stderr, "MAIN: ERROR Invalid msglen %s\n", msglenstr);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    int msglen = atoi(msglenstr);
+
+                    if (msglen < 1 || msglen > 990)
+                    {
+                        fprintf(stderr, "MAIN: ERROR Invalid msglen %s\n", msglenstr);
+                        exit(EXIT_FAILURE);
+                    }
+                    char my_user_id[16];
+                    strcpy(my_user_id, "UDP-client");
+
+                    char* message = get_message_send(local_buffer_3, 0);
+                    char* send_message = get_send_msg(my_user_id, msglenstr, message);
+                    while (strcmp(client_names[send_index],"\0")!=0 && send_index!=16){
+                        if (strcmp(client_names[send_index],my_user_id)!=0){
+                            send_msg(client_sockets[send_index], received_bytes, send_message);
+                        }
+                        send_index++;
+                    }
+                }
+
+                if (command == 0)
+                {
+                    printf("MAIN: ERROR received invalid command \'%s\'", buffer);
+                }
             }
         }
     }
