@@ -157,7 +157,9 @@ char* set_who_list()
 {
     char* temp = malloc(sizeof(char) * ((32 * 16) + 4));
     strncpy(temp, "OK!\n", 4);
+    #ifdef DEBUG_MODE
     printf("Child <%ld>: DEBUG set_who_list() num_clients is %d\n", pthread_self(), num_clients);
+    #endif
     for (int i = 0; i < num_clients; i++)
     {
         strcat(temp, client_names[i]);
@@ -363,7 +365,7 @@ void* socket_thread(void *arg)
             //of active clients.
             else if (received_bytes == 0)
             {
-                pthread_mutex_lock(&lock);
+                //pthread_mutex_lock(&lock);
                 printf("Child <%ld>: Client disconnected\n", pthread_self());
                 FD_CLR(fd, &read_fds);
                 close(fd);
@@ -401,12 +403,7 @@ void* socket_thread(void *arg)
 
                 //Announce that message was
                 //received, and from where.
-                printf(
-                    "Child <%ld>: Rcvd message from %s: %s\n",
-                    pthread_self(),
-                    inet_ntoa((struct in_addr)client.sin_addr),
-                    local_buffer
-                );
+                printf("Child <%ld>: Rcvd incoming TCP connection from\n", pthread_self());
 
                 //Determine the command received
                 //and its validity.
@@ -497,7 +494,7 @@ void* socket_thread(void *arg)
 
                     pthread_mutex_unlock(&lock);
 
-                    pthread_exit(NULL);
+                    pthread_exit(NULL);;
                 }
 
                 //SEND
