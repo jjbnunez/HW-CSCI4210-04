@@ -364,7 +364,7 @@ void* socket_thread(void *arg)
             else if (received_bytes == 0)
             {
                 pthread_mutex_lock(&lock);
-                printf("Child <%ld>: Client on fd %d closed connection\n", pthread_self(), fd);
+                printf("Child <%ld>: Client disconnected\n", pthread_self());
                 FD_CLR(fd, &read_fds);
                 close(fd);
                 for (int i = 0 ; i < num_clients; i++)
@@ -503,7 +503,7 @@ void* socket_thread(void *arg)
                 //SEND
                 if (command  == 4)
                 {
-                    printf("Child <%ld>: Rcvd SEND request for userid %s\n", pthread_self(), local_buffer);
+                    printf("Child <%ld>: Rcvd SEND request to userid %s\n", pthread_self(), local_buffer);
                     
                     char local_buffer_2[BUFFER_SIZE]; 
                     received_bytes = recv(fd, local_buffer_2, BUFFER_SIZE-1, 0);
@@ -617,6 +617,15 @@ void* socket_thread(void *arg)
 //Main function.
 int main(int argc, char** argv)
 {
+    if (argc != 2) 
+    {
+        fprintf(stderr, "MAIN: ERROR Incorrect command line syntax\n");
+        fprintf(stderr, "./a.out <port_number>");
+        exit(EXIT_FAILURE);
+    }
+
+    uint16_t port = atoi(argv[1]);
+
     //Ensure no buffered output for stdout and
     //stderr. This is useful for testing on
     //Submitty.
@@ -664,7 +673,6 @@ int main(int argc, char** argv)
     //htons() and htonl() convert the provided
     //integer arguments from host byte order to
     //network byte order.
-    uint16_t port = PORT; 
     tcp_server.sin_port = htons(port);
     udp_server.sin_port = htons(port);
     int tcp_length = sizeof(tcp_server);
@@ -698,8 +706,8 @@ int main(int argc, char** argv)
         perror("MAIN: ERROR listen() call failed for TCP\n");
         exit(EXIT_FAILURE);
     }
-    printf("MAIN: Listening for TCP connections on port: %d\n", PORT);
-    printf("MAIN: Listening for UDP datagrams on port: %d\n", PORT);
+    printf("MAIN: Listening for TCP connections on port: %d\n", port);
+    printf("MAIN: Listening for UDP datagrams on port: %d\n", port);
 
     //Zero the file descriptor set.
     FD_ZERO(&read_fds);
